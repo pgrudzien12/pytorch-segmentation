@@ -31,10 +31,13 @@ from datasets.deepscene import DeepSceneSegmentation
 
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead
 from torchvision.models.segmentation.fcn import FCNHead
+from torchvision import models
 
 
 import transforms as T
 import utils
+
+import backbones
 
 model_names = sorted(name for name in torchvision.models.segmentation.__dict__
     if name.islower() and not name.startswith("__")
@@ -49,7 +52,6 @@ def parse_args():
     parser.add_argument('data', metavar='DIR', help='path to dataset')
     parser.add_argument('--dataset', default='coco_custom', help='dataset')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='fcn_resnet50',
-                        choices=model_names,
                         help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: fcn_resnet50)')
@@ -246,11 +248,15 @@ def main(args):
 
     # create the segmentation model
     model = getattr(torchvision.models.segmentation, args.arch)(aux_loss=args.aux_loss,
-                                                                pretrained=args.pretrained)
-    if 'deeplabv3' in args.arch:
-        model.classifier = DeepLabHead(2048, num_classes)
-    elif 'fcn_resnet' in args.arch:
-        model.classifier = FCNHead(model.classifier[0].in_channels , num_classes)
+                                                                pretrained_backbone=args.pretrained, num_classes=num_classes)
+    
+
+    # if 'deeplabv3' in args.arch:
+    #     model.classifier = DeepLabHead(2048, num_classes)
+    # elif 'fcn_resnet' in args.arch:
+    #     model.classifier = FCNHead(model.classifier[0].in_channels , num_classes)
+    # elif 'lraspp_mobilenet_v3_large' in args.arch:
+    #     model.classifier = models.segmentation.lraspp.LRASPPHead(40, 960, num_classes, inter_channels=128)
     model.to(device)
 
     if args.distributed:
