@@ -28,7 +28,7 @@ print('running on device ' + str(device))
 
 # load the model checkpoint
 print('loading checkpoint:  ' + opt.input)
-checkpoint = torch.load(opt.input)
+checkpoint = torch.load(opt.input, map_location=device)
 
 arch = checkpoint['arch']
 num_classes = checkpoint['num_classes']
@@ -39,11 +39,18 @@ print('checkpoint accuracy: {:.3f}% mean IoU, {:.3f}% accuracy'.format(checkpoin
 print('using model:  ' + arch)
 print('num classes:  ' + str(num_classes))
 
-model = models.segmentation.__dict__[arch](num_classes=num_classes,
+model = getattr(models.segmentation, arch)(num_classes=num_classes,
                                            aux_loss=None,
-                                           pretrained=False,
-                                           export_onnx=True)
-																 
+                                           pretrained=False)
+m = checkpoint['model']
+del m["aux_classifier.0.weight"]
+del m["aux_classifier.1.weight"]
+del m["aux_classifier.1.bias"]
+del m["aux_classifier.1.running_mean"]
+del m["aux_classifier.1.running_var"]
+del m["aux_classifier.1.num_batches_tracked"]
+del m["aux_classifier.4.weight"]
+del m["aux_classifier.4.bias"]
 # load the model weights
 model.load_state_dict(checkpoint['model'])
 
@@ -55,12 +62,13 @@ print('')
 
 # create example image data
 resolution = checkpoint['resolution']
-input = torch.ones((1, 3, resolution[0], resolution[1])).cuda()
+input = torch.ones((1, 3, resolution[0], resolution[1])).to(device)
 print('input size:  {:d}x{:d}'.format(resolution[1], resolution[0]))
 
+opset_version = 10
 # format output model path
 if not opt.output:
-   opt.output = arch + '.onnx'
+   opt.output = arch + f'-opset-{opset_version}.onnx'
 
 if opt.model_dir and opt.output.find('/') == -1 and opt.output.find('\\') == -1:
    opt.output = os.path.join(opt.model_dir, opt.output)
@@ -70,7 +78,7 @@ input_names = [ "input_0" ]
 output_names = [ "output_0" ]
 
 print('exporting model to ONNX...')
-torch.onnx.export(model, input, opt.output, verbose=True, input_names=input_names, output_names=output_names)
+torch.onnx.export(model, input, opt.output, verbose=True, input_names=input_names, output_names=output_names, opset_version=opset_version)
 print('model exported to:  {:s}'.format(opt.output))
 
 

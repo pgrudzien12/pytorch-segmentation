@@ -33,7 +33,7 @@ class Resize(object):
 
     def __call__(self, image, target):
         image = F.resize(image, self.size)
-        target = F.resize(target, self.size, interpolation=Image.NEAREST)
+        target = F.resize(target, self.size, interpolation=F.InterpolationMode.NEAREST)
         return image, target
 
 class RandomResize(object):
@@ -46,7 +46,7 @@ class RandomResize(object):
     def __call__(self, image, target):
         size = random.randint(self.min_size, self.max_size)
         image = F.resize(image, size)
-        target = F.resize(target, size, interpolation=Image.NEAREST)
+        target = F.resize(target, size, interpolation=F.InterpolationMode.NEAREST)
         return image, target
 
 
